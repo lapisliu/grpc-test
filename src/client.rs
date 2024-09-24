@@ -3,6 +3,7 @@ use data_transfer::data_transfer_client::DataTransferClient;
 use data_transfer::Chunk;
 use tokio::time::Instant;
 use tokio_stream::wrappers::ReceiverStream;
+use std::env;
 
 pub mod data_transfer {
     tonic::include_proto!("datatransfer");
@@ -10,18 +11,25 @@ pub mod data_transfer {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let start = Instant::now();
-    // Create the gRPC client
-    let mut client = DataTransferClient::connect("http://[::1]:50051").await?;
-    let elapsed_time = start.elapsed();
-    println!("Time to connect: {:.2?}", elapsed_time);
+    // Check if the IP address is passed as an argument
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: client <server-ip>");
+        std::process::exit(1);
+    }
+
+    let server_ip = &args[1];
+    let server_url = format!("http://{}:50051", server_ip);
+
+    // Create the gRPC client, connecting to the server at the provided IP address
+    let mut client = DataTransferClient::connect(server_url).await?;
 
     // Create a channel for streaming chunks
-    let (mut tx, rx) = tokio::sync::mpsc::channel::<Chunk>(4);
+    let (tx, rx) = tokio::sync::mpsc::channel::<Chunk>(4);
 
     // Spawn a task to send 256MB of data in chunks of 64KB
     tokio::spawn(async move {
-        let message_size = 1024 * 1024 * 1024; // 256MB
+        let message_size = 256 * 1024 * 1024; // 256MB
         let chunk_size = 64 * 1024; // 64KB chunks
         let num_chunks = message_size / chunk_size;
 
