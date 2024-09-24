@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package datatransfer;
+
+service DataTransfer {
+  rpc SendData(stream Chunk) returns (Ack);
+}
+
+message Chunk {
+  bytes data = 1;
+}
+
+message Ack {
+  string message = 1;
+}
